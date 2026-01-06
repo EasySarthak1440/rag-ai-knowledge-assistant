@@ -100,11 +100,6 @@ export GROQ_API_KEY="your_api_key_here"
 
 ---
 
-## 🧪 Example Interview Explanation
-
-> “I designed the RAG pipeline so ingestion happens only after user upload, avoiding import‑time execution. This ensures clean state management, prevents data leakage, and makes the system production‑ready.”
-
----
 
 ## ✅ What This Project Demonstrates
 
