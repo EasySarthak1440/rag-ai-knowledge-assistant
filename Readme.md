@@ -14,15 +14,6 @@
 
 ---
 
-## 🧠 Core Design Principle
-
-> **Nothing runs by default.**  
-> The RAG pipeline executes **only after a PDF is uploaded**.
-
-This avoids accidental indexing, ghost data, and interview red flags.
-
----
-
 ## 📁 Folder Structure
 
 ```
