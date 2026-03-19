@@ -4,7 +4,7 @@ from sentence_transformers import SentenceTransformer
 
 class VectorStore:
     def __init__(self):
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
+        self.model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
         self.index = None
         self.texts = []
         self.metadata = []

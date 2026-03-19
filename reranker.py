@@ -1,6 +1,6 @@
 from sentence_transformers import CrossEncoder
 
-reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", device="cpu")
 
 def rerank(query, chunks, top_n=3):
     pairs = [(query, c["text"]) for c in chunks]
