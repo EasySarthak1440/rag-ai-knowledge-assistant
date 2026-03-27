@@ -1,30 +1,101 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from ingest import ingest_pdf
+from ingest import ingest_single_pdf
 from vector_store import VectorStore
-from rag_pipeline import rag_answer
+from rag_pipeline import run_rag
+from context_builder import build_sources_summary
 import os
+import shutil
 
 app = FastAPI()
 
+# Allow React (localhost:3000) to call this API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 vs = VectorStore()
+DATA_DIR = "data"
+os.makedirs(DATA_DIR, exist_ok=True)
 
-PDF_PATH = "data/uploaded.pdf"
-
-if os.path.exists(PDF_PATH):
-    print(f"Loading existing PDF: {PDF_PATH}")
-    chunks = ingest_pdf(PDF_PATH)
-    vs.build(chunks)
-    print("Vector store ready!")
+# Auto-load any existing PDFs on startup
+existing = [os.path.join(DATA_DIR, f) for f in os.listdir(DATA_DIR) if f.endswith(".pdf")]
+if existing:
+    for path in existing:
+        print(f"Loading existing PDF: {path}")
+        ingest_single_pdf(path, vs)
+    print(f"Vector store ready! {len(existing)} PDF(s) loaded.")
 else:
-    print("⚠️  No PDF found — upload one via Streamlit first.")
+    print("No PDFs found — upload one via the UI.")
 
+
+# ── Upload endpoint ────────────────────────────────────────────────────────────
+@app.post("/upload")
+async def upload_pdf(file: UploadFile = File(...)):
+    if not file.filename.endswith(".pdf"):
+        return {"error": "Only PDF files are supported."}
+
+    dest = os.path.join(DATA_DIR, file.filename)
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    count = ingest_single_pdf(dest, vs)
+    sources = vs.list_sources()
+
+    return {
+        "message": f"Indexed {count} chunks from {file.filename}",
+        "filename": file.filename,
+        "chunks": count,
+        "all_sources": sources,
+    }
+
+
+# ── Query endpoint ─────────────────────────────────────────────────────────────
 class QueryRequest(BaseModel):
     query: str
+    source_filter: str | None = None
 
 @app.post("/query")
 def query_endpoint(request: QueryRequest):
     if vs.index is None:
-        return {"error": "No document indexed yet. Upload a PDF via Streamlit first."}
-    answer = rag_answer(request.query, vs)
-    return {"query": request.query, "answer": answer}
+        return {"error": "No document indexed yet. Upload a PDF first."}
+
+    answer, results = run_rag(
+        query=request.query,
+        vector_store=vs,
+        source_filter=request.source_filter,
+    )
+    sources = build_sources_summary(results)
+
+    return {
+        "query": request.query,
+        "answer": answer,
+        "sources": sources,
+    }
+
+
+# ── List sources endpoint ──────────────────────────────────────────────────────
+@app.get("/sources")
+def list_sources():
+    return {"sources": vs.list_sources()}
+
+
+# ── Delete a PDF ───────────────────────────────────────────────────────────────
+@app.delete("/sources/{filename}")
+def delete_source(filename: str):
+    path = os.path.join(DATA_DIR, filename)
+    if os.path.exists(path):
+        os.remove(path)
+
+    # Rebuild index from remaining PDFs
+    vs.reset()
+    remaining = [os.path.join(DATA_DIR, f) for f in os.listdir(DATA_DIR) if f.endswith(".pdf")]
+    for p in remaining:
+        ingest_single_pdf(p, vs)
+
+    return {"message": f"Removed {filename}", "remaining_sources": vs.list_sources()}
