@@ -5,3 +5,4 @@ venv/
 app.log
 data/
 .streamlit/
+*.Zone.Identifier
