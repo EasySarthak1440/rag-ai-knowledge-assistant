@@ -21,17 +21,28 @@ app.add_middleware(
 
 vs = VectorStore()
 DATA_DIR = "data"
+INDEX_PATH = os.path.join(DATA_DIR, "index")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Auto-load any existing PDFs on startup
-existing = [os.path.join(DATA_DIR, f) for f in os.listdir(DATA_DIR) if f.endswith(".pdf")]
-if existing:
-    for path in existing:
-        print(f"Loading existing PDF: {path}")
-        ingest_single_pdf(path, vs)
-    print(f"Vector store ready! {len(existing)} PDF(s) loaded.")
+# Try loading saved index, otherwise fall back to PDF ingestion
+if vs.load(INDEX_PATH):
+    print(f"Loaded saved index with {len(vs.chunks)} chunks.")
 else:
-    print("No PDFs found — upload one via the UI.")
+    print("No saved index found. Loading PDFs...")
+    existing = [os.path.join(DATA_DIR, f) for f in os.listdir(DATA_DIR) if f.endswith(".pdf")]
+    if existing:
+        for path in existing:
+            print(f"Loading existing PDF: {path}")
+            ingest_single_pdf(path, vs)
+        print(f"Vector store ready! {len(existing)} PDF(s) loaded.")
+    else:
+        print("No PDFs found — upload one via the UI.")
+
+
+def _save_index() -> None:
+    """Save the vector store index to disk."""
+    vs.save(INDEX_PATH)
+    print(f"Index saved ({len(vs.chunks)} chunks).")
 
 
 # ── Upload endpoint ────────────────────────────────────────────────────────────
@@ -46,6 +57,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     count = ingest_single_pdf(dest, vs)
     sources = vs.list_sources()
+    _save_index()
 
     return {
         "message": f"Indexed {count} chunks from {file.filename}",
@@ -97,5 +109,6 @@ def delete_source(filename: str):
     remaining = [os.path.join(DATA_DIR, f) for f in os.listdir(DATA_DIR) if f.endswith(".pdf")]
     for p in remaining:
         ingest_single_pdf(p, vs)
+    _save_index()
 
     return {"message": f"Removed {filename}", "remaining_sources": vs.list_sources()}

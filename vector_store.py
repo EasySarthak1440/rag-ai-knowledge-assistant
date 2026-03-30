@@ -5,7 +5,13 @@ Key change from v1:
     Alongside the FAISS index we maintain a parallel Python list
     `self.metadata` so every chunk can carry { source, page, chunk_id }.
     This is the simplest approach that requires zero extra dependencies.
+
+v2:
+    - Added save/load methods for persistent index across restarts
 """
+
+import os
+import pickle
 
 import numpy as np
 import faiss
@@ -111,6 +117,50 @@ class VectorStore:
     def list_sources(self) -> list[str]:
         """Return sorted unique list of all indexed PDF filenames."""
         return sorted({m.get("source", "unknown") for m in self.metadata})
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path: str = "data/index") -> None:
+        """
+        Save FAISS index and metadata to disk.
+
+        Args:
+            path: Base path (will create .index and .meta files)
+        """
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+
+        if self.index is not None:
+            faiss.write_index(self.index, f"{path}.index")
+
+        with open(f"{path}.meta", "wb") as f:
+            pickle.dump({"chunks": self.chunks, "metadata": self.metadata}, f)
+
+    def load(self, path: str = "data/index") -> bool:
+        """
+        Load FAISS index and metadata from disk.
+
+        Args:
+            path: Base path (will look for .index and .meta files)
+
+        Returns:
+            True if loaded successfully, False if no saved index exists.
+        """
+        index_path = f"{path}.index"
+        meta_path = f"{path}.meta"
+
+        if not os.path.exists(index_path) or not os.path.exists(meta_path):
+            return False
+
+        self.index = faiss.read_index(index_path)
+
+        with open(meta_path, "rb") as f:
+            data = pickle.load(f)
+            self.chunks = data["chunks"]
+            self.metadata = data["metadata"]
+
+        return True
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -133,24 +133,33 @@ export default function RAGInterface() {
   const syncDocs = sources => setDocs(sources.map((name,i) => ({ name, color: DOC_COLORS[i%DOC_COLORS.length], chunks:null })))
   const showToast = (msg, type='success') => setToast({msg,type})
 
-  // Upload PDF
-  const uploadPDF = async file => {
-    if (!file || !file.name.endsWith('.pdf')) { showToast('Only PDF files are supported.','error'); return }
-    setUploading(file.name); setRtab('docs')
-    const form = new FormData()
-    form.append('file', file)
-    try {
-      const res  = await fetch(`${API}/upload`, { method:'POST', body:form })
-      const data = await res.json()
-      if (data.error) {
-        showToast(data.error,'error')
-      } else {
-        syncDocs(data.all_sources)
-        setDocs(prev => prev.map(d => d.name===data.filename ? {...d, chunks:data.chunks} : d))
-        showToast(`✅ Indexed ${data.chunks} chunks from ${data.filename}`)
-      }
-    } catch { showToast('Upload failed — is the backend running?','error') }
-    finally { setUploading(null) }
+  // Upload PDF(s)
+  const uploadPDF = async files => {
+    if (!files || files.length === 0) { showToast('No files selected.','error'); return }
+    const pdfFiles = Array.from(files).filter(f => f.name.endsWith('.pdf'))
+    if (pdfFiles.length === 0) { showToast('Only PDF files are supported.','error'); return }
+    if (pdfFiles.length !== files.length) { showToast('Skipped non-PDF files.','error') }
+    setUploading(`${pdfFiles.length} file(s)`); setRtab('docs')
+    let totalChunks = 0
+    let successCount = 0
+    for (const file of pdfFiles) {
+      const form = new FormData()
+      form.append('file', file)
+      try {
+        const res  = await fetch(`${API}/upload`, { method:'POST', body:form })
+        const data = await res.json()
+        if (data.error) {
+          showToast(data.error,'error')
+        } else {
+          syncDocs(data.all_sources)
+          setDocs(prev => prev.map(d => d.name===data.filename ? {...d, chunks:data.chunks} : d))
+          totalChunks += data.chunks
+          successCount++
+        }
+      } catch { showToast('Upload failed — is the backend running?','error') }
+    }
+    if (successCount > 0) { showToast(`✅ Indexed ${totalChunks} chunks from ${successCount} PDF(s)`) }
+    setUploading(null)
   }
 
   // Delete PDF
@@ -501,8 +510,8 @@ export default function RAGInterface() {
               </button>
 
               {/* Hidden file input — triggered by upload button AND drop zone */}
-              <input ref={fileRef} type="file" accept=".pdf" style={{display:'none'}}
-                onChange={e=>{if(e.target.files[0])uploadPDF(e.target.files[0]);e.target.value=''}}/>
+              <input ref={fileRef} type="file" accept=".pdf" multiple style={{display:'none'}}
+                onChange={e=>{if(e.target.files[0])uploadPDF(e.target.files);e.target.value=''}}/>
               <button className="icon-btn" onClick={()=>fileRef.current?.click()}
                 style={{width:32,height:32,borderRadius:8,border:'none',cursor:'pointer',
                   background:'transparent',color:'#475569',display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -616,7 +625,7 @@ export default function RAGInterface() {
                   onClick={()=>fileRef.current?.click()}
                   onDragOver={e=>{e.preventDefault();setDrag(true)}}
                   onDragLeave={()=>setDrag(false)}
-                  onDrop={e=>{e.preventDefault();setDrag(false);if(e.dataTransfer.files[0])uploadPDF(e.dataTransfer.files[0])}}
+                  onDrop={e=>{e.preventDefault();setDrag(false);if(e.dataTransfer.files[0])uploadPDF(e.dataTransfer.files)}}
                   style={{border:'1.5px dashed rgba(255,255,255,.12)',borderRadius:10,padding:'20px',textAlign:'center'}}>
                   {uploading?(
                     <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
