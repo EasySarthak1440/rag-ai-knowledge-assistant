@@ -7,3 +7,5 @@ nltk
 numpy
 torch
 transformers
+fastapi-mcp
+uvicorn
