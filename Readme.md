@@ -32,6 +32,12 @@ A full-stack RAG application with a **futuristic React UI** and a **FastAPI back
 - `DELETE /sources/{filename}` — remove a PDF and rebuild the index
 - CORS configured for React frontend at `localhost:3000`
 
+### 🔌 MCP Server (for AI Agents)
+- `MCP endpoint` — exposes RAG functionality as tools for AI assistants
+- Available tools: `upload_pdf`, `query_documents`, `list_sources`, `delete_document`, `get_stats`
+- Runs on port 8002 to avoid conflicts with main API
+- Enables AI assistants like Claude Desktop, Cursor, etc. to directly interact with your knowledge base
+
 ---
 
 ## 📁 Folder Structure
@@ -40,6 +46,7 @@ A full-stack RAG application with a **futuristic React UI** and a **FastAPI back
 rag-ai-knowledge-assistant/
 │
 ├── api.py                 # FastAPI backend (port 8000)
+├── mcp_server.py          # MCP server for AI agents (port 8002)
 ├── app.py                 # Streamlit UI (legacy, port 8501)
 │
 ├── ingest.py              # Multi-PDF ingestion with metadata
@@ -83,6 +90,7 @@ rag-ai-knowledge-assistant/
 | LLM         | Groq — LLaMA-4 Maverick               |
 | PDF Parsing | PyPDF                                 |
 | Legacy UI   | Streamlit                             |
+| MCP Server  | FastAPI-MCP                           |
 
 ---
 
@@ -146,14 +154,20 @@ export GROQ_API_KEY="your_api_key_here"
 setx GROQ_API_KEY "your_api_key_here"
 ```
 
-### 3. Start the FastAPI Backend
+### 3. Start the Services
 
+#### Terminal 1: Start FastAPI Backend (Main API for React)
 ```bash
 uvicorn api:app --reload --port 8000
 ```
 
-### 4. Start the React Frontend
+#### Terminal 2: Start MCP Server (for AI Agents)
+```bash
+python -m mcp_server
+# or: uvicorn mcp_server:app --reload --port 8002
+```
 
+#### Terminal 3: Start React Frontend
 ```bash
 cd frontend
 npm install
@@ -163,30 +177,15 @@ npm start
 Opens at `http://localhost:3000`
 
 ### Alternative: Streamlit UI (legacy)
-
 ```bash
 streamlit run app.py
 ```
 
 ---
 
-## 🖥️ UI Walkthrough
-
-| Area | What it does |
-|---|---|
-| Right panel → Docs tab | Drag-and-drop or click to upload PDFs. Shows indexing progress. |
-| Left sidebar → Filter Source | Restrict answers to one specific PDF |
-| Chat input → Upload icon | Quick upload without opening the docs panel |
-| AI response | Grounded answer with confidence indicator |
-| "How this was generated" | Expandable reasoning chain (query rewrite → retrieve → rerank → answer) |
-| Right panel → Sources tab | Cards showing filename + page numbers used in the last answer |
-| Right panel → Memory tab | Session context the assistant is aware of |
-| `⌘K` / `Ctrl+K` | Command palette — upload, new chat, view memory |
-
----
-
 ## 🔌 API Reference
 
+### Main API (port 8000)
 ```
 POST /upload
   Body: multipart/form-data { file: <PDF> }
@@ -203,6 +202,16 @@ DELETE /sources/{filename}
   Returns: { message, remaining_sources }
 ```
 
+### MCP Server (port 8002)
+The MCP server exposes the same endpoints as MCP tools:
+- `upload_pdf` → POST /upload
+- `query_documents` → POST /query  
+- `list_sources` → GET /sources
+- `delete_document` → DELETE /sources/{filename}
+- `get_stats` → GET /stats
+
+**MCP Endpoint**: `http://localhost:8002/mcp` (for AI agent connection)
+
 ---
 
 ## ✅ What This Project Demonstrates
@@ -214,6 +223,7 @@ DELETE /sources/{filename}
 - LLM grounding and hallucination control
 - Per-source filtering for multi-document knowledge bases
 - Real-world API design with file upload, CRUD, and CORS
+- MCP (Model Context Protocol) support for AI agent integration
 
 ---
 
@@ -224,6 +234,7 @@ DELETE /sources/{filename}
 - [ ] Inline source citation highlighting inside answer text
 - [ ] Dockerization (single `docker-compose up`)
 - [ ] Multi-user support with isolated indexes
+- [ ] Enhanced MCP tool descriptions and examples
 
 ---
 
