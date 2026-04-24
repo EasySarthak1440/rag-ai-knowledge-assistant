@@ -98,17 +98,12 @@ def list_sources():
 
 
 # ── Delete a PDF ───────────────────────────────────────────────────────────────
+# api.py — replace the delete endpoint with this
 @app.delete("/sources/{filename}")
 def delete_source(filename: str):
+    removed = vs.delete_source(filename)       # fast: reconstructs vectors, no re-encoding
     path = os.path.join(DATA_DIR, filename)
     if os.path.exists(path):
         os.remove(path)
-
-    # Rebuild index from remaining PDFs
-    vs.reset()
-    remaining = [os.path.join(DATA_DIR, f) for f in os.listdir(DATA_DIR) if f.endswith(".pdf")]
-    for p in remaining:
-        ingest_single_pdf(p, vs)
     _save_index()
-
-    return {"message": f"Removed {filename}", "remaining_sources": vs.list_sources()}
+    return {"message": f"Removed {filename}", "removed_chunks": removed, "remaining_sources": vs.list_sources()}

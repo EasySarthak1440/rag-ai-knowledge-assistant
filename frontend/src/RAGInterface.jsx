@@ -268,13 +268,21 @@ export default function RAGInterface() {
         <div style={{padding:'6px 12px 10px'}}>
           <div style={{fontSize:10,color:'#475569',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600,marginBottom:7}}>Filter Source</div>
           {['all',...docs.map(d=>d.name)].map(src=>(
-            <button key={src} className={`kb-chip${sourceFilter===src?' on':''}`} onClick={()=>setFilter(src)}
-              style={{display:'flex',alignItems:'center',gap:6,width:'100%',padding:'6px 9px',borderRadius:6,
-                border:'1px solid rgba(255,255,255,0.07)',background:'transparent',color:'#94a3b8',
-                fontSize:11,cursor:'pointer',marginBottom:3,fontFamily:'JetBrains Mono,monospace',textAlign:'left',
-                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-              <Database size={10}/>{src==='all'?'All documents':src}
-            </button>
+            <div key={src} style={{display:'flex',alignItems:'center',marginBottom:3}}>
+              <button className={`kb-chip${sourceFilter===src?' on':''}`} onClick={()=>setFilter(src)}
+                style={{display:'flex',alignItems:'center',gap:6,flex:1,padding:'6px 9px',borderRadius:6,
+                  border:'1px solid rgba(255,255,255,0.07)',background:'transparent',color:'#94a3b8',
+                  fontSize:11,cursor:'pointer',fontFamily:'JetBrains Mono,monospace',textAlign:'left',
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                <Database size={10}/>{src==='all'?'All documents':src}
+              </button>
+              {src!=='all'&&(
+                <button onClick={()=>deletePDF(src)}
+                  style={{padding:4,marginLeft:4,borderRadius:4,border:'none',background:'rgba(239,68,68,.1)',color:'#ef4444',cursor:'pointer'}}>
+                  <Trash2 size={10}/>
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -311,12 +319,12 @@ export default function RAGInterface() {
       </aside>
 
       {/* ── MAIN ── */}
-      <main style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',position:'relative',zIndex:5}}>
+      <main style={{flex:1,minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden',position:'relative',zIndex:5}}>
 
         {/* Header */}
         <div style={{padding:'13px 22px',borderBottom:'1px solid rgba(255,255,255,0.06)',
           display:'flex',alignItems:'center',justifyContent:'space-between',
-          background:'rgba(7,9,15,.7)',backdropFilter:'blur(20px)',flexShrink:0}}>
+          background:'rgba(7,9,15,.7)',backdropFilter:'blur(20px)',flexShrink:0,minHeight:63}}>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:'#e2e8f0',fontFamily:'Syne,sans-serif'}}>
               {msgs.length>0?(msgs.find(m=>m.role==='user')?.content?.slice(0,42)+'…'):'New conversation'}
@@ -333,7 +341,7 @@ export default function RAGInterface() {
           </div>
           <button className="icon-btn" onClick={()=>setROpen(p=>!p)}
             style={{width:32,height:32,borderRadius:7,...glass,border:'1px solid rgba(255,255,255,.07)',
-              cursor:'pointer',color:'#64748b',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              cursor:'pointer',color:'#64748b',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             <Layers size={13}/>
           </button>
         </div>
@@ -373,7 +381,7 @@ export default function RAGInterface() {
         )}
 
         {/* Messages */}
-        <div style={{flex:1,overflowY:'auto',padding:'22px',display:'flex',flexDirection:'column',gap:20}}>
+        <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'22px',display:'flex',flexDirection:'column',gap:20}}>
           {msgs.map((m,idx)=>(
             <div key={m.id} style={{display:'flex',flexDirection:'column',
               alignItems:m.role==='user'?'flex-end':'flex-start',
@@ -487,13 +495,14 @@ export default function RAGInterface() {
           <div className="iarea" style={{display:'flex',alignItems:'flex-end',gap:6,
             padding:'8px 8px 8px 14px',borderRadius:13,...glass,
             border:'1px solid rgba(255,255,255,.09)',transition:'all .2s'}}>
-            <textarea value={inp} onChange={e=>setInp(e.target.value)}
+<textarea value={inp} onChange={e=>setInp(e.target.value)}
               onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}}}
-              placeholder={hasIndex?'Ask anything about your documents…':'Upload a PDF first to start querying…'}
+              placeholder={hasIndex ? 'Ask anything about your documents...' : 'Upload a PDF first to start querying...'}
               rows={1}
               style={{flex:1,background:'none',border:'none',outline:'none',
                 color:'#e2e8f0',fontSize:14,lineHeight:1.5,resize:'none',
-                fontFamily:'Inter,sans-serif',maxHeight:110,overflowY:'auto'}}/>
+                fontFamily:'Inter,sans-serif',maxHeight:110,overflowY:'auto',
+                minHeight:44}}/>
             <div style={{display:'flex',alignItems:'center',gap:3,flexShrink:0}}>
               <button className="icon-btn" onClick={()=>setVoice(p=>!p)}
                 style={{width:32,height:32,borderRadius:8,border:'none',cursor:'pointer',
@@ -537,12 +546,12 @@ export default function RAGInterface() {
       </main>
 
       {/* ── RIGHT PANEL ── */}
-      {rOpen&&(
+      {rOpen &&
         <aside style={{width:292,flexShrink:0,display:'flex',flexDirection:'column',
           borderLeft:'1px solid rgba(255,255,255,.06)',
           background:'rgba(7,9,15,.75)',backdropFilter:'blur(24px)',zIndex:10,animation:'slideR .25s ease'}}>
 
-          <div style={{display:'flex',borderBottom:'1px solid rgba(255,255,255,.06)',padding:'0 4px',flexShrink:0}}>
+          <div style={{display:'flex',borderBottom:'1px solid rgba(255,255,255,.06)',padding:'0 4px',flexShrink:0,minHeight:44}}>
             {[{id:'sources',icon:BookOpen,label:'Sources'},{id:'memory',icon:Brain,label:'Memory'},{id:'docs',icon:FileText,label:'Docs'}]
               .map(({id,icon:I,label})=>(
               <button key={id} className={`rtab${rtab===id?' on':''}`} onClick={()=>setRtab(id)}
@@ -555,7 +564,7 @@ export default function RAGInterface() {
             ))}
           </div>
 
-          <div style={{flex:1,overflowY:'auto',padding:'12px'}}>
+          <div style={{flex:1,minHeight:0,overflowY:'auto',padding:'12px'}}>
 
             {/* SOURCES */}
             {rtab==='sources'&&(
@@ -581,10 +590,18 @@ export default function RAGInterface() {
                           Pages: {s.pages?.join(', ')}
                         </div>
                       </div>
-                      <div style={{width:22,height:22,borderRadius:5,flexShrink:0,
-                        background:'rgba(6,182,212,.1)',border:'1px solid rgba(6,182,212,.2)',
-                        display:'flex',alignItems:'center',justifyContent:'center',
-                        fontSize:9,color:'#06b6d4',fontWeight:700,fontFamily:'JetBrains Mono,monospace'}}>{i+1}</div>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{width:22,height:22,borderRadius:5,flexShrink:0,
+                          background:'rgba(6,182,212,.1)',border:'1px solid rgba(6,182,212,.2)',
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          fontSize:9,color:'#06b6d4',fontWeight:700,fontFamily:'JetBrains Mono,monospace'}}>{i+1}</div>
+                        <button className="del-btn icon-btn" onClick={()=>deletePDF(s.source)}
+                          style={{width:22,height:22,borderRadius:5,border:'none',cursor:'pointer',
+                            background:'rgba(239,68,68,.1)',color:'#ef4444',flexShrink:0,
+                            display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          <Trash2 size={10}/>
+                        </button>
+                      </div>
                     </div>
                     <div style={{marginTop:6,display:'flex',alignItems:'center',gap:4,color:'#334155',fontSize:10}}>
                       <Clock size={9}/>Just now
@@ -680,7 +697,7 @@ export default function RAGInterface() {
             )}
           </div>
         </aside>
-      )}
+      }
 
       {/* ── COMMAND PALETTE ── */}
       {cmdOpen&&(

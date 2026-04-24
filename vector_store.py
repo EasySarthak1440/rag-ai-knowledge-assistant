@@ -113,6 +113,41 @@ class VectorStore:
                 break
 
         return results
+    
+    def delete_source(self, source: str) -> int:
+        """
+        Remove all chunks from a PDF and rebuild the index without re-encoding.
+
+        Args:
+            source: filename to remove (matches metadata['source'])
+        Returns:
+            number of chunks removed
+        """
+        if not self.chunks:
+            return 0
+
+        keep = [i for i, m in enumerate(self.metadata) if m.get("source") != source]
+        removed = len(self.chunks) - len(keep)
+
+        if removed == 0:
+            return 0
+
+        # reconstruct stored vectors — avoids slow re-encoding
+        kept_vecs = np.array(
+            [self.index.reconstruct(i) for i in keep], dtype="float32"
+        ) if keep else None
+
+        self.chunks   = [self.chunks[i]   for i in keep]
+        self.metadata = [self.metadata[i] for i in keep]
+
+        if kept_vecs is not None and len(kept_vecs) > 0:
+            dim = kept_vecs.shape[1]
+            self.index = faiss.IndexFlatIP(dim)
+            self.index.add(kept_vecs)
+        else:
+            self.index = None  # index is now empty
+
+        return removed
 
     def list_sources(self) -> list[str]:
         """Return sorted unique list of all indexed PDF filenames."""
