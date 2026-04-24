@@ -8,7 +8,6 @@ import {
 const API = "http://localhost:8000"
 
 const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --bg: #07090f; --surface: #0d1117; --card: #111827;
@@ -21,7 +20,7 @@ const GLOBAL_CSS = `
     --ff-mono: 'JetBrains Mono', monospace;
     --ff-body: 'Inter', sans-serif;
   }
-  body { background: var(--bg); color: var(--text); font-family: var(--ff-body); overflow: hidden; }
+  body { color: var(--text); font-family: var(--ff-body); overflow:hidden; margin:0; padding:0; }
   ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
 
@@ -106,12 +105,10 @@ export default function RAGInterface() {
   const endRef  = useRef(null)
   const fileRef = useRef(null)
 
-  // Load existing docs on mount
   useEffect(() => {
     fetch(`${API}/sources`).then(r=>r.json()).then(d=>{ if(d.sources) syncDocs(d.sources) }).catch(()=>{})
   }, [])
 
-  // Keyboard shortcuts
   useEffect(() => {
     const fn = e => {
       if ((e.metaKey||e.ctrlKey) && e.key==='k') { e.preventDefault(); setCmd(p=>!p) }
@@ -121,9 +118,15 @@ export default function RAGInterface() {
     return () => window.removeEventListener('keydown', fn)
   }, [])
 
-  useEffect(() => { endRef.current?.scrollIntoView({behavior:'smooth'}) }, [msgs, streaming])
+  const isFirstRender = useRef(true);
 
-  // Auto-dismiss toast
+useEffect(() => { endRef.current?.scrollIntoView({behavior:'smooth'}) }, [msgs, streaming])
+
+useEffect(() => {
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}, []); // ← empty array = sirf refresh/mount pe chalega
+
   useEffect(() => {
     if (!toast) return
     const t = setTimeout(() => setToast(null), 3500)
@@ -133,7 +136,6 @@ export default function RAGInterface() {
   const syncDocs = sources => setDocs(sources.map((name,i) => ({ name, color: DOC_COLORS[i%DOC_COLORS.length], chunks:null })))
   const showToast = (msg, type='success') => setToast({msg,type})
 
-  // Upload PDF(s)
   const uploadPDF = async files => {
     if (!files || files.length === 0) { showToast('No files selected.','error'); return }
     const pdfFiles = Array.from(files).filter(f => f.name.endsWith('.pdf'))
@@ -162,7 +164,6 @@ export default function RAGInterface() {
     setUploading(null)
   }
 
-  // Delete PDF
   const deletePDF = async filename => {
     try {
       const res  = await fetch(`${API}/sources/${encodeURIComponent(filename)}`, {method:'DELETE'})
@@ -173,7 +174,6 @@ export default function RAGInterface() {
     } catch { showToast('Delete failed.','error') }
   }
 
-  // Send message
   const send = async () => {
     if (!inp.trim()||streaming) return
     const question = inp.trim()
@@ -210,7 +210,15 @@ export default function RAGInterface() {
   const hasIndex = docs.length > 0
 
   return (
-    <div style={{display:'flex',height:'100vh',background:'#07090f',overflow:'hidden',position:'relative',fontFamily:'Inter,sans-serif'}}>
+  <div style={{
+        
+        display:'flex', height:'100vh', background:'#07090f',
+        overflow:'hidden', fontFamily:'Inter,sans-serif',
+        
+        
+      
+      boxShadow:'0 0 40px rgba(6,182,212,0.08), inset 0 0 0 1px rgba(255,255,255,0.04)'
+    }}>
       <style>{GLOBAL_CSS}</style>
 
       {/* Grid bg */}
@@ -239,7 +247,7 @@ export default function RAGInterface() {
         borderRight:'1px solid rgba(255,255,255,0.06)',background:'rgba(7,9,15,0.85)',backdropFilter:'blur(24px)',zIndex:10}}>
 
         {/* Logo */}
-        <div style={{padding:'18px 14px 14px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+        <div style={{padding:'28px 14px 14px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
             <div style={{width:34,height:34,borderRadius:9,background:'linear-gradient(135deg,#06b6d4,#8b5cf6)',
               display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 22px rgba(6,182,212,.35)',
@@ -319,12 +327,12 @@ export default function RAGInterface() {
       </aside>
 
       {/* ── MAIN ── */}
-      <main style={{flex:1,minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden',position:'relative',zIndex:5}}>
+      <main style={{flex:1,height:'100%',display:'flex',flexDirection:'column',overflow:'hidden',position:'relative',zIndex:5}}>
 
         {/* Header */}
-        <div style={{padding:'13px 22px',borderBottom:'1px solid rgba(255,255,255,0.06)',
+        <div style={{padding:'23px 22px 13px',borderBottom:'1px solid rgba(255,255,255,0.06)',
           display:'flex',alignItems:'center',justifyContent:'space-between',
-          background:'rgba(7,9,15,.7)',backdropFilter:'blur(20px)',flexShrink:0,minHeight:63}}>
+          background:'rgba(7,9,15,.7)',backdropFilter:'blur(20px)',flexShrink:0}}>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:'#e2e8f0',fontFamily:'Syne,sans-serif'}}>
               {msgs.length>0?(msgs.find(m=>m.role==='user')?.content?.slice(0,42)+'…'):'New conversation'}
@@ -495,14 +503,13 @@ export default function RAGInterface() {
           <div className="iarea" style={{display:'flex',alignItems:'flex-end',gap:6,
             padding:'8px 8px 8px 14px',borderRadius:13,...glass,
             border:'1px solid rgba(255,255,255,.09)',transition:'all .2s'}}>
-<textarea value={inp} onChange={e=>setInp(e.target.value)}
+            <textarea value={inp} onChange={e=>setInp(e.target.value)}
               onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}}}
-              placeholder={hasIndex ? 'Ask anything about your documents...' : 'Upload a PDF first to start querying...'}
+              placeholder={hasIndex?'Ask anything about your documents…':'Upload a PDF first to start querying…'}
               rows={1}
               style={{flex:1,background:'none',border:'none',outline:'none',
                 color:'#e2e8f0',fontSize:14,lineHeight:1.5,resize:'none',
-                fontFamily:'Inter,sans-serif',maxHeight:110,overflowY:'auto',
-                minHeight:44}}/>
+                fontFamily:'Inter,sans-serif',maxHeight:110,overflowY:'auto'}}/>
             <div style={{display:'flex',alignItems:'center',gap:3,flexShrink:0}}>
               <button className="icon-btn" onClick={()=>setVoice(p=>!p)}
                 style={{width:32,height:32,borderRadius:8,border:'none',cursor:'pointer',
@@ -518,7 +525,6 @@ export default function RAGInterface() {
                 ):<Mic size={13}/>}
               </button>
 
-              {/* Hidden file input — triggered by upload button AND drop zone */}
               <input ref={fileRef} type="file" accept=".pdf" multiple style={{display:'none'}}
                 onChange={e=>{if(e.target.files[0])uploadPDF(e.target.files);e.target.value=''}}/>
               <button className="icon-btn" onClick={()=>fileRef.current?.click()}
@@ -546,12 +552,12 @@ export default function RAGInterface() {
       </main>
 
       {/* ── RIGHT PANEL ── */}
-      {rOpen &&
+      {rOpen&&(
         <aside style={{width:292,flexShrink:0,display:'flex',flexDirection:'column',
           borderLeft:'1px solid rgba(255,255,255,.06)',
           background:'rgba(7,9,15,.75)',backdropFilter:'blur(24px)',zIndex:10,animation:'slideR .25s ease'}}>
 
-          <div style={{display:'flex',borderBottom:'1px solid rgba(255,255,255,.06)',padding:'0 4px',flexShrink:0,minHeight:44}}>
+          <div style={{display:'flex',borderBottom:'1px solid rgba(255,255,255,.06)',padding:'0 4px',flexShrink:0}}>
             {[{id:'sources',icon:BookOpen,label:'Sources'},{id:'memory',icon:Brain,label:'Memory'},{id:'docs',icon:FileText,label:'Docs'}]
               .map(({id,icon:I,label})=>(
               <button key={id} className={`rtab${rtab===id?' on':''}`} onClick={()=>setRtab(id)}
@@ -590,18 +596,10 @@ export default function RAGInterface() {
                           Pages: {s.pages?.join(', ')}
                         </div>
                       </div>
-                      <div style={{display:'flex',alignItems:'center',gap:6}}>
-                        <div style={{width:22,height:22,borderRadius:5,flexShrink:0,
-                          background:'rgba(6,182,212,.1)',border:'1px solid rgba(6,182,212,.2)',
-                          display:'flex',alignItems:'center',justifyContent:'center',
-                          fontSize:9,color:'#06b6d4',fontWeight:700,fontFamily:'JetBrains Mono,monospace'}}>{i+1}</div>
-                        <button className="del-btn icon-btn" onClick={()=>deletePDF(s.source)}
-                          style={{width:22,height:22,borderRadius:5,border:'none',cursor:'pointer',
-                            background:'rgba(239,68,68,.1)',color:'#ef4444',flexShrink:0,
-                            display:'flex',alignItems:'center',justifyContent:'center'}}>
-                          <Trash2 size={10}/>
-                        </button>
-                      </div>
+                      <div style={{width:22,height:22,borderRadius:5,flexShrink:0,
+                        background:'rgba(6,182,212,.1)',border:'1px solid rgba(6,182,212,.2)',
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                        fontSize:9,color:'#06b6d4',fontWeight:700,fontFamily:'JetBrains Mono,monospace'}}>{i+1}</div>
                     </div>
                     <div style={{marginTop:6,display:'flex',alignItems:'center',gap:4,color:'#334155',fontSize:10}}>
                       <Clock size={9}/>Just now
@@ -697,7 +695,7 @@ export default function RAGInterface() {
             )}
           </div>
         </aside>
-      }
+      )}
 
       {/* ── COMMAND PALETTE ── */}
       {cmdOpen&&(
@@ -706,7 +704,7 @@ export default function RAGInterface() {
             backdropFilter:'blur(10px)',zIndex:100,display:'flex',
             alignItems:'flex-start',justifyContent:'center',paddingTop:'14vh'}}>
           <div onClick={e=>e.stopPropagation()}
-            style={{width:480,borderRadius:14,
+            style={{width:480,
               background:'rgba(10,12,18,.97)',border:'1px solid rgba(255,255,255,.12)',
               boxShadow:'0 28px 80px rgba(0,0,0,.7),0 0 0 1px rgba(6,182,212,.1)',
               animation:'fadeUp .18s ease',overflow:'hidden'}}>
